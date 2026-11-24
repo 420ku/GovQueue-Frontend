@@ -7,14 +7,52 @@ import { socket } from "./../../helpers/socket";
 
 export default function AdminHeader({ agency }) {
     const addQueue = () => {
-        const name = prompt("Add queue:");
-        socket.emit("addQueue", { agencyId: agency.agency_id, name: name.trim() });
+        const input = prompt("Add queue:");
+        if (input === null) return;
+
+        const name = input.trim();
+        if (!name) {
+            alert("Queue name is required.");
+            return;
+        }
+
+        if (!socket.connected) {
+            socket.connect();
+            alert("Realtime connection is unavailable. Please try again once connected.");
+            return;
+        }
+
+        socket.timeout(10000).emit(
+            "addQueue",
+            { agencyId: agency.agency_id, name },
+            (error, response) => {
+                if (error) {
+                    alert("Queue creation timed out. Check your connection and try again.");
+                    return;
+                }
+
+                if (!response?.success) {
+                    alert(response?.message || "Unable to add queue.");
+                }
+            }
+        );
     };
 
     const removeQueue = () => {
-        const queueId = prompt("Remove queue ID:");
-        if (!isNaN(Number(queueId))) {
+        const input = prompt("Remove queue ID:");
+        if (input === null || !input.trim()) return;
+
+        const queueId = Number(input);
+        if (Number.isInteger(queueId) && queueId > 0) {
+            if (!socket.connected) {
+                socket.connect();
+                alert("Realtime connection is unavailable. Please try again once connected.");
+                return;
+            }
+
             socket.emit("removeQueue", queueId);
+        } else {
+            alert("Enter a valid queue ID.");
         }
     };
     return (
